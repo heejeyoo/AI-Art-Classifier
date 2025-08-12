@@ -1,7 +1,7 @@
 streamlit
 pandas
 numpy
-scikit-learn==1.4.2
-tensorflow==2.15.0
+scikit-learn
+tensorflow==2.20.0rc0
 requests
 Pillow
