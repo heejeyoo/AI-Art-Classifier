@@ -6,20 +6,13 @@ import pickle
 import tensorflow as tf
 from tensorflow.keras.applications.efficientnet import preprocess_input
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import GlobalAveragePooling2D
+from tensorflow.keras.layers import GlobalAveragePooling2D, Input
 import requests
 import time
 import json
 
-# ==============================================================================
-# Helper Functions
-# ==============================================================================
-
-# --- Function to get the full extract from Wikipedia API ---
+# get the full summary from wikipedia
 def get_full_style_info_from_wikipedia(style_name):
-    """
-    Fetches the entire summary extract for a given art style from the Wikipedia API.
-    """
     try:
         S = requests.Session()
         URL = "https://en.wikipedia.org/w/api.php"
@@ -31,17 +24,13 @@ def get_full_style_info_from_wikipedia(style_name):
         DATA = R.json()
         PAGES = DATA["query"]["pages"]
         for k, v in PAGES.items():
-            # Return the full extract, not just the first paragraph
+            # just return the full text
             return v.get("extract", "No summary available.")
     except Exception as e:
         return f"Could not fetch details from Wikipedia: {e}"
 
-# --- Function to generate a summary and artist list using Gemini (structured JSON output) ---
+# use gemini to summarize the wiki text and get artists
 def generate_summary_and_artists(style, wikipedia_extract):
-    """
-    Uses Gemini to summarize the Wikipedia text and extract a list of artists,
-    returning the result as a structured JSON object.
-    """
     max_retries = 5
     delay = 1
     for i in range(max_retries):
@@ -53,6 +42,7 @@ def generate_summary_and_artists(style, wikipedia_extract):
                 f"Text:\n\"\"\"\n{wikipedia_extract}\n\"\"\""
             )
 
+            # ask gemini for a json object
             generation_config = {
                 "responseMimeType": "application/json",
                 "responseSchema": {
@@ -71,7 +61,6 @@ def generate_summary_and_artists(style, wikipedia_extract):
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                 "generationConfig": generation_config
             }
-            # UPDATED: Use st.secrets to get the API key
             api_key = st.secrets["GEMINI_API_KEY"]
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
             
@@ -82,7 +71,7 @@ def generate_summary_and_artists(style, wikipedia_extract):
 
             if (result.get('candidates') and result['candidates'][0].get('content') and 
                 result['candidates'][0]['content'].get('parts')):
-                # The response part is a JSON string, so we need to parse it
+                # the response is a json string, so parse it
                 json_string = result['candidates'][0]['content']['parts'][0]['text']
                 return json.loads(json_string)
             else:
@@ -98,11 +87,8 @@ def generate_summary_and_artists(style, wikipedia_extract):
     return {"summary": "Could not generate summary after retries.", "artists": []}
 
 
-# --- Function to call the Gemini API for the final explanation ---
+# call gemini again for the final explanation
 def generate_ai_explanation(style, summary, artists):
-    """
-    Uses the AI-generated summary and artist list to create the final explanation.
-    """
     max_retries = 5
     delay = 1
     for i in range(max_retries):
@@ -120,7 +106,6 @@ def generate_ai_explanation(style, summary, artists):
 
             chat_history = [{"role": "user", "parts": [{"text": prompt}]}]
             payload = {"contents": chat_history}
-            # UPDATED: Use st.secrets to get the API key
             api_key = st.secrets["GEMINI_API_KEY"]
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
             
@@ -145,15 +130,9 @@ def generate_ai_explanation(style, summary, artists):
     return "Could not generate an explanation after several retries."
 
 
-# ==============================================================================
-# Load Models and Pre-processing Objects
-# ==============================================================================
-
+# this function loads all the pkl files and the feature extractor
 @st.cache_resource
 def load_models():
-    """
-    Loads all the necessary model files once.
-    """
     try:
         with open('best_model.pkl', 'rb') as f:
             model = pickle.load(f)
@@ -163,8 +142,11 @@ def load_models():
             encoder = pickle.load(f)
         
         IMG_SIZE = (224, 224)
+        # define the input layer to prevent shape errors
+        input_tensor = Input(shape=IMG_SIZE + (3,))
+        
         base_model = tf.keras.applications.efficientnet.EfficientNetB0(
-            weights='imagenet', include_top=False, input_shape=IMG_SIZE + (3,)
+            weights='imagenet', include_top=False, input_tensor=input_tensor
         )
         base_model.trainable = False
         pooled_output = GlobalAveragePooling2D()(base_model.output)
@@ -176,10 +158,6 @@ def load_models():
         return None, None, None, None
 
 ml_model, scaler, le, feature_extractor = load_models()
-
-# ==============================================================================
-# Streamlit App UI
-# ==============================================================================
 
 st.set_page_config(layout="wide")
 st.title("🎨 AI Art Advisor")
@@ -196,7 +174,7 @@ if uploaded_file is not None and all([ml_model, scaler, le, feature_extractor]):
 
     with col2:
         with st.spinner('Analyzing the artwork...'):
-            # 1. Preprocess and predict style
+            # 1. process the image and predict
             image_resized = image.resize((224, 224))
             image_array = np.array(image_resized)
             image_expanded = np.expand_dims(image_array, axis=0)
@@ -209,16 +187,16 @@ if uploaded_file is not None and all([ml_model, scaler, le, feature_extractor]):
             st.success(f"**Predicted Art Style:** {predicted_style}")
 
         with st.spinner('Fetching details and generating explanation...'):
-            # 2. Get full text from Wikipedia
+            # 2. get text from wikipedia
             full_extract = get_full_style_info_from_wikipedia(predicted_style)
             
             if "Could not fetch" not in full_extract:
-                # 3. Use Gemini to summarize text and extract artists
+                # 3. use gemini to get summary and artists
                 ai_generated_data = generate_summary_and_artists(predicted_style, full_extract)
                 ai_summary = ai_generated_data.get("summary", "Summary could not be generated.")
                 ai_artists = ai_generated_data.get("artists", [])
                 
-                # 4. Use Gemini again to generate the final explanation
+                # 4. use gemini again for the final explanation
                 final_explanation = generate_ai_explanation(predicted_style, ai_summary, ai_artists)
                 
                 st.subheader("About the Style")
