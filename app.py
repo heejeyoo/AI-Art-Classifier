@@ -10,8 +10,29 @@ from tensorflow.keras.layers import GlobalAveragePooling2D, Input
 import requests
 import json
 import os
+import time # New import for the retry logic
 
 # --- Define Helper Functions ---
+
+# New: Helper function to handle retries with exponential backoff
+def post_request_with_retries(url, payload, retries=3, backoff_in_seconds=1):
+    for attempt in range(retries):
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status() # Raises an error for bad status codes (4xx or 5xx)
+            return response
+        except requests.exceptions.HTTPError as e:
+            # Only retry for 5xx server errors
+            if 500 <= e.response.status_code < 600:
+                print(f"Server error occurred (attempt {attempt + 1}/{retries}): {e}. Retrying in {backoff_in_seconds}s...")
+                time.sleep(backoff_in_seconds)
+                backoff_in_seconds *= 2 # Double the wait time for the next attempt
+            else:
+                # Don't retry for client errors (4xx), just raise the exception
+                raise e
+    # If all retries fail, raise the last exception
+    raise Exception(f"Failed to get a valid response after {retries} attempts.")
+
 
 # Get text from Wikipedia
 def get_full_style_info_from_wikipedia(style_name):
@@ -44,8 +65,8 @@ def generate_summary_and_artists(style, wikipedia_extract):
         payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": generation_config}
         api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
         
-        response = requests.post(api_url, json=payload)
-        response.raise_for_status()
+        # Using the new retry function
+        response = post_request_with_retries(api_url, payload)
         
         result_json = response.json()['candidates'][0]['content']['parts'][0]['text']
         return json.loads(result_json)
@@ -68,8 +89,9 @@ def generate_ai_explanation(style, summary, artists):
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
         
-        response = requests.post(api_url, json=payload)
-        response.raise_for_status()
+        # Using the new retry function
+        response = post_request_with_retries(api_url, payload)
+        
         return response.json()['candidates'][0]['content']['parts'][0]['text']
 
     except Exception as e:
@@ -140,7 +162,7 @@ def predict_art_style(input_image):
             ai_summary = ai_data.get("summary")
             ai_artists = ai_data.get("artists")
             
-            if "Error" in ai_summary:
+            if "Error" in str(ai_summary): # Check for error string in summary
                 style_explanation = ai_summary
             else:
                 style_explanation = generate_ai_explanation(predicted_style, ai_summary, ai_artists)
