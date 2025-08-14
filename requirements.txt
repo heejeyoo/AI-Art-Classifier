@@ -1,7 +1,6 @@
-streamlit
-pandas
-numpy
-scikit-learn
-tensorflow
-requests
-Pillow
+tensorflow==2.15.0
+scikit-learn==1.6.1
+numpy==1.26.4
+requests==2.32.3
+Pillow==10.2.0
+gradio==4.25.0
