@@ -26,7 +26,7 @@ This project combines deep learning for feature extraction with classical machin
 * **Classifier:** Support Vector Machine (SVC)
 * **Deployment:** Gradio, Hugging Face Spaces
 * **Generative AI:** Google Gemini API
-* **Data Source:** [WikiArt Dataset on Kaggle](https://www.kaggle.com/datasets/antoinegruson/wikiart-art-pieces-classifiaction)
+* **Data Source:** [WikiArt Dataset on Kaggle](https://www.kaggle.com/datasets/simolopes/wikiart-all-artpieces)
 
 ## Setup and Installation
 
