@@ -85,4 +85,4 @@ To run this project locally, follow these steps:
 
 ## Acknowledgments
 
-This project uses the **WikiArt dataset**, which contains over 80,000 high-quality images of paintings. The dataset is available on [Kaggle](https://www.kaggle.com/datasets/antoinegruson/wikiart-art-pieces-classifiaction).
+This project uses the **WikiArt dataset**, which contains over 80,000 high-quality images of paintings. The dataset is available on [Kaggle](https://www.kaggle.com/datasets/simolopes/wikiart-all-artpieces).
