@@ -4,70 +4,14 @@ from PIL import Image
 import numpy as np
 import pickle
 import tensorflow as tf
-from tensorflow.keras.applications.efficientnet import preprocess_input, EfficientNetB7 # Corrected model from previous step
+from tensorflow.keras.applications.efficientnet import preprocess_input, EfficientNetB7
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import GlobalAveragePooling2D, Input
 import requests
 import json
 import os
-import base64
-import io
 
 # --- Define Helper Functions ---
-
-# Helper to convert PIL Image to base64 for Vision API
-def pil_to_base64(image):
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode('utf-8')
-
-# New: Use Gemini Vision to identify the specific artwork
-def identify_artwork_with_gemini(pil_image):
-    try:
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            return {"title": "API key not found.", "artist": None}
-
-        image_b64 = pil_to_base64(pil_image)
-
-        prompt = (
-            "Analyze this image of a painting. If it is a well-known artwork, identify its title and artist. "
-            "If the artwork is not recognized or is not famous, respond with 'Unknown'. "
-            "Provide the output in JSON format with two keys: 'title' and 'artist'."
-        )
-
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": image_b64
-                            }
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "response_mime_type": "application/json"
-            }
-        }
-        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-
-        response = requests.post(api_url, json=payload)
-        response.raise_for_status()
-
-        result_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-        # Clean potential markdown formatting from the JSON response
-        clean_json_text = result_text.strip().replace('```json', '').replace('```', '').strip()
-        result_json = json.loads(clean_json_text)
-        return result_json
-
-    except Exception as e:
-        return {"title": f"Artwork identification error: {e}", "artist": None}
-
 
 # Get text from Wikipedia
 def get_full_style_info_from_wikipedia(style_name):
@@ -170,12 +114,7 @@ explanation_cache = {}
 
 # Run this function for each uploaded image
 def predict_art_style(input_image):
-    # --- New: Artwork Identification ---
-    artwork_identity = identify_artwork_with_gemini(input_image)
-    artwork_title = artwork_identity.get("title", "Identification failed")
-    artwork_artist = artwork_identity.get("artist")
-
-    # --- Existing: Style Classification ---
+    # --- Style Classification ---
     image_rgb = input_image.convert("RGB")
     image_resized = image_rgb.resize((224, 224))
     image_array = np.array(image_resized)
@@ -187,7 +126,7 @@ def predict_art_style(input_image):
     prediction_encoded = ml_model.predict(features_scaled)
     predicted_style = le.inverse_transform(prediction_encoded)[0]
     
-    label_output = {predicted_style: 1.0}
+    label_output = predicted_style
 
     # --- Get Style Explanation (with caching) ---
     if predicted_style in explanation_cache:
@@ -208,19 +147,8 @@ def predict_art_style(input_image):
         
         explanation_cache[predicted_style] = style_explanation
     
-    # --- New: Combine Outputs for Markdown Display ---
-    if artwork_artist and "Unknown" not in artwork_title and "Error" not in artwork_title:
-        identification_header = f"### {artwork_title} by {artwork_artist}\n\n"
-    elif "Unknown" not in artwork_title and "Error" not in artwork_title:
-        identification_header = f"### {artwork_title}\n\n"
-    else:
-        identification_header = "### Artwork Not Recognized\n\n---\n\n"
-
-    # Combine the identification and the style explanation
-    combined_output = identification_header + style_explanation
-    
     # Return the final results for display
-    return label_output, combined_output
+    return label_output, style_explanation
 
 # --- Build Gradio Interface ---
 
@@ -229,11 +157,11 @@ demo = gr.Interface(
     fn=predict_art_style,
     inputs=gr.Image(type="pil", label="Upload an Artwork"),
     outputs=[
-        gr.Label(label="Predicted Style"),
-        gr.Markdown(label="AI Art Advisor's Analysis") # Updated label
+        gr.Textbox(label="Predicted Style"),
+        gr.Markdown(label="AI Art Advisor's Analysis")
     ],
     title="AI Art Advisor",
-    description="Upload a painting to identify the work, classify its art style, and get an AI-generated explanation. Please allow a moment for the analysis.",
+    description="Upload a painting to classify its art style and get an AI-generated explanation. Please allow a moment for the analysis.",
     examples=[
         ["examples/starry_night.jpg"],
         ["examples/mona_lisa.jpg"],
