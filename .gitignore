@@ -211,3 +211,6 @@ __marimo__/
 
 # Ignore Streamlit secrets and configuration
 .streamlit/
+
+# Ignore Google Cloud Storage bucket
+ai-art-advisor-697d9127c196.json
