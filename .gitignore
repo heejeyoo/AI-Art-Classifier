@@ -214,3 +214,4 @@ __marimo__/
 
 # Ignore Google Cloud Storage bucket
 ai-art-advisor-697d9127c196.json
+/best_model.pkl
