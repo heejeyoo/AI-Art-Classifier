@@ -214,3 +214,4 @@ __marimo__/
 
 # Ignore Google Cloud Storage bucket
 ai-art-advisor-727e2ec7d8ca.json
+/data
