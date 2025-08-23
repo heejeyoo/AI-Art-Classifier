@@ -215,3 +215,43 @@ __marimo__/
 # Ignore Google Cloud Storage bucket
 ai-art-advisor-727e2ec7d8ca.json
 /data
+
+# DVC files
+# Ignore the DVC cache and any data/models tracked by DVC
+.dvc/cache
+/data/
+/models/
+
+# Sensitive Information - NEVER commit API keys or credentials
+*.json
+!kaggle.json  # If you have a template but the actual key is ignored below
+ai-art-advisor-727e2ec7d8ca.json
+.env
+
+# Python bytecode and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv/
+env/
+.env/
+
+# Python build artifacts and packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.whl
+
+# Jupyter / IPython Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/
