@@ -222,6 +222,8 @@ ai-art-advisor-727e2ec7d8ca.json
 /data/
 /models/
 
+best_model.pkl
+
 # Sensitive Information - NEVER commit API keys or credentials
 *.json
 !kaggle.json  # If you have a template but the actual key is ignored below
