@@ -1,0 +1,5 @@
+outs:
+- md5: 07ac3a32ceaab5160a740f7726117a0c
+  size: 111357447
+  hash: md5
+  path: art_classifier_convnext_v1.pth
