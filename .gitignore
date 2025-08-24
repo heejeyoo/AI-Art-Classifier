@@ -133,6 +133,8 @@ cython_debug/
 /data/
 /models/
 best_model.pkl
+label_encoder.pkl
+
 
 # --- Sensitive Credentials ---
 # Ignore all .json key files and environment files

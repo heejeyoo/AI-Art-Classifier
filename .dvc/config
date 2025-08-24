@@ -1,2 +1,4 @@
+[core]
+    remote = my-gcs-remote
 ['remote "my-gcs-remote"']
     url = gs://ai-art-advisor-datastorage
